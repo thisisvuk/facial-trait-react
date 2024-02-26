@@ -26,7 +26,7 @@ const FacePositionValidator = () => {
 
   const capture = async (imageSrc) => {
     if (!modelsLoaded) {
-      console.error('Models not loaded yet. Cannot capture.');
+      console.error('Models not loaded yet. Cannot capture');
       return;
     }
   
