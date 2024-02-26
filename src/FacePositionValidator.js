@@ -25,8 +25,8 @@ const FacePositionValidator = () => {
   }, []);
 
   const capture = async (imageSrc) => {
-    if (!modelsLoaded) {
-      console.error('Models not loaded yet. Cannot capture');
+    if (!modelsLoaded || !webcamRef.current) {
+      console.error('Models not loaded yet or webcam not initialized.');
       return;
     }
   
