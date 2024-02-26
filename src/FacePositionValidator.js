@@ -7,6 +7,7 @@ const FacePositionValidator = () => {
   const [isPositionedCorrectly, setIsPositionedCorrectly] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestDone, setIsTestDone] = useState(false);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -50,7 +51,7 @@ const FacePositionValidator = () => {
         console.log("Nose X:", noseX);
         console.log("Image Width:", imageWidth);
 
-        const isFaceCentered = Math.abs(noseX - imageWidth / 2) < 50;
+        const isFaceCentered = Math.abs(noseX - imageWidth / 2) < 100;
         const isFaceVisible = detections.detection._score > 0.5;
 
         console.log("Difference:", Math.abs(noseX - imageWidth / 2));
@@ -63,6 +64,7 @@ const FacePositionValidator = () => {
         setIsPositionedCorrectly(false);
       }
       setIsLoading(false);
+      setIsTestDone(true);
     };
 
     img.src = imageSrc;
@@ -77,7 +79,7 @@ const FacePositionValidator = () => {
   return (
     <div className="w-screen h-screen flex flex-col items-center justify-center">
       {console.log({isPositionedCorrectly})}
-      {!isPositionedCorrectly ? (
+      {!isPositionedCorrectly && !isTestDone ? (
         <Webcam
         className="mx-auto w-100 h-2/4 bg-black rounded-2xl"
         audio={false}
@@ -101,6 +103,7 @@ const FacePositionValidator = () => {
       )}
 
       
+      
       <p className="pt-2">{isLoading ? `Please wait...` : `` }</p>
       
       {
@@ -115,10 +118,10 @@ const FacePositionValidator = () => {
       </p>
       }
            
-      {isPositionedCorrectly && (
+      {isTestDone && (
         <button
           className="mt-5 bg-yellow-500 py-2 px-5 w-fit rounded-lg"
-          onClick={()  => setIsPositionedCorrectly(false)}
+          onClick={()  => {setIsPositionedCorrectly(false); setIsTestDone(false);}}
         >
           Go Back
         </button>
