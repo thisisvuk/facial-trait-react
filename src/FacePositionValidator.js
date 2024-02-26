@@ -1,16 +1,16 @@
-import React, { useRef, useState,useEffect } from 'react';
-import Webcam from 'react-webcam';
-import * as faceapi from 'face-api.js';
+import React, { useRef, useState, useEffect } from "react";
+import Webcam from "react-webcam";
+import * as faceapi from "face-api.js";
 
 const FacePositionValidator = () => {
   const webcamRef = useRef(null);
-  const [isPositionedCorrectly, setIsPositionedCorrectly] = useState(null);
-
+  const [isPositionedCorrectly, setIsPositionedCorrectly] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const loadModels = async () => {
-      const MODEL_URL = process.env.PUBLIC_URL + '/models';
+      const MODEL_URL = process.env.PUBLIC_URL + "/models";
 
       Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -18,82 +18,110 @@ const FacePositionValidator = () => {
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
       ]).then(setModelsLoaded(true));
-    }
+    };
 
     loadModels();
-
   }, []);
 
   const capture = async (imageSrc) => {
-    if (!modelsLoaded || !webcamRef.current) {
-      console.error('Models not loaded yet or webcam not initialized.');
+    if (!modelsLoaded) {
+      console.error("Models not loaded yet. Cannot capture");
       return;
     }
-  
+
+    setIsLoading(true);
+
     const img = new Image();
-  
+
     img.onload = async () => {
       const detections = await faceapi
         .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
         .withFaceDescriptor();
-  
-      if (detections && detections.landmarks && detections.landmarks.getNose()) {
+
+      if (
+        detections &&
+        detections.landmarks &&
+        detections.landmarks.getNose()
+      ) {
         const noseX = detections.landmarks.getNose()[0].x;
         const imageWidth = img.width;
-  
-        console.log('Nose X:', noseX);
-        console.log('Image Width:', imageWidth);
-  
+
+        console.log("Nose X:", noseX);
+        console.log("Image Width:", imageWidth);
+
         const isFaceCentered = Math.abs(noseX - imageWidth / 2) < 50;
         const isFaceVisible = detections.detection._score > 0.5;
-  
-        console.log('Difference:', Math.abs(noseX - imageWidth / 2));
-        console.log('Is Face Centered:', isFaceCentered);
-        console.log('Is Face Visible:', isFaceVisible);
-  
+
+        console.log("Difference:", Math.abs(noseX - imageWidth / 2));
+        console.log("Is Face Centered:", isFaceCentered);
+        console.log("Is Face Visible:", isFaceVisible);
+
         setIsPositionedCorrectly(isFaceCentered && isFaceVisible);
       } else {
-        console.error('Nose position not detected or landmarks not available.');
+        console.error("Nose position not detected or landmarks not available.");
         setIsPositionedCorrectly(false);
       }
+      setIsLoading(false);
     };
-  
+
     img.src = imageSrc;
   };
-  
-  
 
   const videoConstraints = {
     width: 1280,
     height: 720,
-    facingMode: "user"
+    facingMode: "user",
   };
 
   return (
-    <div>
-      <Webcam
-      audio={false}
-      height={300}
-      screenshotFormat="image/jpeg"
-      width={400}
-      videoConstraints={videoConstraints}
-    >
-      {({ getScreenshot }) => (
-        <button
-          onClick={() => {
-            const imageSrc = getScreenshot()
-            capture(imageSrc)
-          }}
-        >
-          Capture photo
-        </button>
-      )}
-    </Webcam>
-      {isPositionedCorrectly ? (
-        <p>User positioned correctly! Redirecting to home page...</p>
+    <div className="w-screen h-screen flex flex-col items-center justify-center">
+      {console.log({isPositionedCorrectly})}
+      {!isPositionedCorrectly ? (
+        <Webcam
+        className="mx-auto w-100 h-2/4 bg-black rounded-2xl"
+        audio={false}
+        screenshotFormat="image/jpeg"
+        videoConstraints={videoConstraints}
+      >
+        {({ getScreenshot }) => (
+          <button
+            className="mt-5 bg-yellow-500 py-2 px-5 w-fit rounded-lg"
+            onClick={() => {
+              const imageSrc = getScreenshot();
+              capture(imageSrc);
+            }}
+          >
+            Capture photo
+          </button>
+        )}
+      </Webcam>
       ) : (
-        <p>Please adjust your face position for proper validation.</p>
+        <p></p>
+      )}
+
+      
+      <p className="pt-2">{isLoading ? `Please wait...` : `` }</p>
+      
+      {
+        !isPositionedCorrectly && <p className="py-3">
+          Please adjust your face position for proper validation.
+      </p>
+      }
+      
+      {
+        isPositionedCorrectly && <p className="py-3 text-2xl text-green-900 font-bold">
+          You're in home.
+      </p>
+      }
+           
+      {isPositionedCorrectly && (
+        <button
+          className="mt-5 bg-yellow-500 py-2 px-5 w-fit rounded-lg"
+          onClick={()  => setIsPositionedCorrectly(false)}
+        >
+          Go Back
+        </button>
       )}
     </div>
   );
