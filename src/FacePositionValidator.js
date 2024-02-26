@@ -4,20 +4,24 @@ import * as faceapi from 'face-api.js';
 
 const FacePositionValidator = () => {
   const webcamRef = useRef(null);
-  const [isPositionedCorrectly, setIsPositionedCorrectly] = useState(false);
+  const [isPositionedCorrectly, setIsPositionedCorrectly] = useState(null);
 
   const [modelsLoaded, setModelsLoaded] = useState(false);
 
   useEffect(() => {
-    const loadFaceApi = async () => {
-      await faceapi.nets.tinyYolov2.loadFromUri('/models');
-      await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-      await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-      await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
-      setModelsLoaded(true);
-    };
+    const loadModels = async () => {
+      const MODEL_URL = process.env.PUBLIC_URL + '/models';
 
-    loadFaceApi(); // Call the function when the component mounts
+      Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+      ]).then(setModelsLoaded(true));
+    }
+
+    loadModels();
+
   }, []);
 
   const capture = async (imageSrc) => {
@@ -25,24 +29,39 @@ const FacePositionValidator = () => {
       console.error('Models not loaded yet. Cannot capture.');
       return;
     }
+  
     const img = new Image();
+  
+    img.onload = async () => {
+      const detections = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+  
+      if (detections && detections.landmarks && detections.landmarks.getNose()) {
+        const noseX = detections.landmarks.getNose()[0].x;
+        const imageWidth = img.width;
+  
+        console.log('Nose X:', noseX);
+        console.log('Image Width:', imageWidth);
+  
+        const isFaceCentered = Math.abs(noseX - imageWidth / 2) < 50;
+        const isFaceVisible = detections.detection._score > 0.5;
+  
+        console.log('Difference:', Math.abs(noseX - imageWidth / 2));
+        console.log('Is Face Centered:', isFaceCentered);
+        console.log('Is Face Visible:', isFaceVisible);
+  
+        setIsPositionedCorrectly(isFaceCentered && isFaceVisible);
+      } else {
+        console.error('Nose position not detected or landmarks not available.');
+        setIsPositionedCorrectly(false);
+      }
+    };
+  
     img.src = imageSrc;
-  
-    const detections = await faceapi
-      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-  
-    if (detections) {
-      // You may need to adjust these thresholds based on your use case
-      const isFaceCentered = Math.abs(detections.landmarks.getNose().x - img.width / 2) < 50;
-      const isFaceVisible = detections.detection._score > 0.5;
-  
-      setIsPositionedCorrectly(isFaceCentered && isFaceVisible);
-    } else {
-      setIsPositionedCorrectly(false);
-    }
   };
+  
   
 
   const videoConstraints = {
